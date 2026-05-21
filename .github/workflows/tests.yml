@@ -1,0 +1,61 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  collect:
+    name: Pytest collection (no ML stack)
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.11', '3.12']
+      fail-fast: false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install pytest
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest
+
+      - name: Pytest collection — Artemis tests should skip cleanly
+        # All four tests in tests/ are hardware-bound smoke scripts: they need
+        # a real A-series checkpoint + transformers + CUDA. Each file's top
+        # guard (`if "pytest" in sys.modules: pytest.skip(allow_module_level=True)`)
+        # makes them skip-clean under pytest. CI verifies that — we expect
+        # "collected 0 items / 4 skipped", no import errors.
+        run: |
+          python -m pytest tests/ --collect-only -q
+          python -m pytest tests/ -v
+
+  package:
+    name: Build sdist + wheel
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Build
+        run: |
+          python -m pip install --upgrade pip build
+          python -m build
+
+      - name: Twine check
+        run: |
+          python -m pip install --upgrade twine
+          twine check dist/*

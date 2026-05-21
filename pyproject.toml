@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "artemis-vlm"
+version = "0.1.0"
+description = "LLaVA-style graft adding vision-language capability to Mistral-family decoders (Schneewolf Labs — Project Artemis)."
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [{ name = "Schneewolf Labs" }]
+requires-python = ">=3.10"
+keywords = ["vlm", "multimodal", "mistral", "qwen3-vl", "schneewolf-labs", "artemis"]
+classifiers = [
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    # transformers 5.0+ for Qwen3-VL classes + the modern PretrainedConfig API
+    "transformers>=5.0.0",
+    "torch>=2.5.0",
+    "Pillow>=10.0.0",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=7.0", "datasets>=3.0", "numpy>=1.24"]
+
+[project.urls]
+Homepage = "https://github.com/Schneewolf-Labs/Artemis"
+Repository = "https://github.com/Schneewolf-Labs/Artemis"
+Issues = "https://github.com/Schneewolf-Labs/Artemis/issues"
+
+[tool.setuptools.packages.find]
+include = ["artemis_vlm*"]
+exclude = ["tests*"]
