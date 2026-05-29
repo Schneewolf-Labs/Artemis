@@ -50,7 +50,7 @@ class ArtemisVLMProcessor:
 
         image_inputs = {}
         grid = None
-        if images is not None:
+        if images:  # non-empty list; text-only rows pass [] (or None) -> no pixel_values
             image_inputs = self.image_processor(images=images, return_tensors=return_tensors)
             grid = image_inputs["image_grid_thw"]
 
