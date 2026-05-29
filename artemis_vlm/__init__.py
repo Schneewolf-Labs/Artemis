@@ -17,7 +17,7 @@ from .modeling_artemis_vlm import (
 )
 from .processing_artemis_vlm import ArtemisVLMProcessor
 
-__version__ = "0.1.2"
+__version__ = "0.1.3"
 
 __all__ = [
     "ArtemisVLMConfig",

@@ -56,6 +56,21 @@ class ArtemisVLMForConditionalGeneration(PreTrainedModel, GenerationMixin):
     # empty dict is the correct declaration.
     all_tied_weights_keys: dict = {}
 
+    # Grad-checkpointing is forwarded to the language_model only (the trainable
+    # decoder); the vision tower is frozen during Stage-1/2 and doesn't need it.
+    # The class attr lets PreTrainedModel.gradient_checkpointing_enable accept
+    # the call; the methods below explicitly delegate. Required by grimoire's
+    # evaluate() which disables and re-enables grad-ckpt around eval.
+    _supports_gradient_checkpointing = True
+
+    def gradient_checkpointing_enable(self, gradient_checkpointing_kwargs=None):
+        self.language_model.gradient_checkpointing_enable(
+            gradient_checkpointing_kwargs=gradient_checkpointing_kwargs
+        )
+
+    def gradient_checkpointing_disable(self):
+        self.language_model.gradient_checkpointing_disable()
+
     def __init__(self, config: ArtemisVLMConfig, vision_model=None, language_model=None):
         super().__init__(config)
         # Pre-built submodules may be injected (assembly path) to avoid
