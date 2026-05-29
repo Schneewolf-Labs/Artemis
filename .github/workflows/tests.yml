@@ -33,11 +33,22 @@ jobs:
         # All four tests in tests/ are hardware-bound smoke scripts: they need
         # a real A-series checkpoint + transformers + CUDA. Each file's top
         # guard (`if "pytest" in sys.modules: pytest.skip(allow_module_level=True)`)
-        # makes them skip-clean under pytest. CI verifies that — we expect
-        # "collected 0 items / 4 skipped", no import errors.
+        # makes pytest find the files but collect zero tests, which pytest
+        # reports as exit code 5 ("no tests collected"). That's the success
+        # case for us — accept it explicitly while still failing on real
+        # import errors (collection errors return a different non-zero code).
         run: |
+          set +e
           python -m pytest tests/ --collect-only -q
+          rc=$?
+          if [ $rc -ne 0 ] && [ $rc -ne 5 ]; then
+            echo "pytest exit $rc — real failure"; exit $rc
+          fi
           python -m pytest tests/ -v
+          rc=$?
+          if [ $rc -ne 0 ] && [ $rc -ne 5 ]; then
+            exit $rc
+          fi
 
   package:
     name: Build sdist + wheel

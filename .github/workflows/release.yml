@@ -22,8 +22,21 @@ jobs:
       - name: Install dependencies
         run: pip install -e ".[test]"
 
-      - name: Run tests (collection-only; heavy ML smoke skipped)
-        run: pytest tests/ --collect-only
+      - name: Verify package imports cleanly
+        # The 4 files under tests/ are GPU-only hardware smokes that
+        # skip at module load via pytest.skip(allow_module_level=True),
+        # so `pytest --collect-only` finds zero tests and exits 5. The
+        # meaningful CI check for a published wheel is "does it import
+        # against a fresh Python install" — that's what this does.
+        run: |
+          python -c "import artemis_vlm; print('artemis_vlm', artemis_vlm.__name__, 'imports OK')"
+          python -c "from artemis_vlm import (
+              ArtemisVLMConfig,
+              ArtemisVLMForConditionalGeneration,
+              ArtemisVLMProcessor,
+              ArtemisDataCollator,
+              artemis_loss_fn,
+          ); print('public API imports OK')"
 
   publish:
     needs: test
