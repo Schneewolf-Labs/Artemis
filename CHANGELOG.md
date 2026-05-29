@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-05-29
+
+### Fixed
+- **Release workflow**: `pytest tests/ --collect-only` exited 5 ("no tests
+  collected") because all four test files skip at module load — the v0.1.1
+  release publish job failed on this. Replaced with a package-import check
+  that actually validates a fresh-install wheel.
+- **Tests workflow**: same exit-5 problem; accepts exit 5 explicitly now
+  while still failing on real import / collection errors.
+
+### Note
+- v0.1.1 was tagged but never reached PyPI due to the workflow bug. 0.1.2
+  is the first PyPI release; nothing else changed in the package itself.
+
 ## [0.1.1] - 2026-05-29
 
 ### Added

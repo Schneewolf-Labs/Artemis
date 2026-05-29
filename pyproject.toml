@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "artemis-vlm"
-version = "0.1.1"
+version = "0.1.2"
 description = "LLaVA-style graft adding vision-language capability to Mistral-family decoders (Schneewolf Labs — Project Artemis)."
 readme = "README.md"
 license = { file = "LICENSE" }
