@@ -22,7 +22,16 @@ from __future__ import annotations
 
 
 class ArtemisDataCollator:
-    def __init__(self, processor, label_pad: int = -100):
+    def __init__(self, processor, label_pad: int = -100,
+                 auto_detect_thinking: bool = True):
+        """
+        auto_detect_thinking: when True, render each row with
+            enable_thinking matched to whether the final assistant turn
+            actually carries a <think>...</think> block. Bakes the empty
+            <think></think> wrapper into the prompt prefix on non-reasoning
+            rows so the model never trains on emitting a closing </think>
+            itself. Defaults True (recommended for hybrid corpora).
+        """
         self.proc = processor
         self.tok = processor.tokenizer
         self.label_pad = label_pad
@@ -31,10 +40,41 @@ class ArtemisDataCollator:
             self.tok.pad_token_id if self.tok.pad_token_id is not None
             else self.tok.eos_token_id
         )
+        self.auto_detect_thinking = auto_detect_thinking
 
-    def _ids(self, messages, images, add_gen):
+    @staticmethod
+    def _content_has_think(content) -> bool:
+        """True iff the assistant content carries a <think>...</think> block.
+        Handles plain-string content (L4 text rows) and content lists (L1
+        multimodal rows where content = [{type:image}, {type:text,text:...}, ...]).
+        """
+        if isinstance(content, str):
+            return "<think>" in content and "</think>" in content
+        if isinstance(content, list):
+            for item in content:
+                if isinstance(item, dict):
+                    t = item.get("text", "")
+                    if isinstance(t, str) and "<think>" in t and "</think>" in t:
+                        return True
+        return False
+
+    def _row_enable_thinking(self, messages) -> bool:
+        """Per-row thinking flag: True iff the final assistant turn has real
+        <think>...</think> content. When the model only ever sees the
+        '<think>\\n' prompt prefix on rows whose target actually carries
+        reasoning, the empty-wrapper-close failure mode disappears.
+        """
+        if not self.auto_detect_thinking:
+            return True
+        last_a = next((m for m in reversed(messages) if m.get("role") == "assistant"), None)
+        if last_a is None:
+            return True
+        return self._content_has_think(last_a.get("content", ""))
+
+    def _ids(self, messages, images, add_gen, enable_thinking: bool = True):
         text = self.proc.apply_chat_template(
-            messages, tokenize=False, add_generation_prompt=add_gen
+            messages, tokenize=False, add_generation_prompt=add_gen,
+            enable_thinking=enable_thinking,
         )
         return self.proc(text=text, images=images, return_tensors="pt")
 
@@ -44,8 +84,9 @@ class ArtemisDataCollator:
         seqs, labels, pvs, grids = [], [], [], []
         for f in features:
             msgs, imgs = f["messages"], f.get("images")
-            full = self._ids(msgs, imgs, add_gen=False)
-            prompt = self._ids(msgs[:-1], imgs, add_gen=True)  # everything but target
+            think = self._row_enable_thinking(msgs)
+            full = self._ids(msgs, imgs, add_gen=False, enable_thinking=think)
+            prompt = self._ids(msgs[:-1], imgs, add_gen=True, enable_thinking=think)
             ids = full["input_ids"][0]
             plen = prompt["input_ids"].shape[1]
             lab = ids.clone()
