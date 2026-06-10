@@ -166,13 +166,20 @@ class ArtemisVLMForConditionalGeneration(PreTrainedModel, GenerationMixin):
     # --- generation: inject the image only on the first step ---
     def prepare_inputs_for_generation(
         self, input_ids, past_key_values=None, attention_mask=None,
-        pixel_values=None, image_grid_thw=None, **kwargs
+        pixel_values=None, image_grid_thw=None, is_first_iteration=False, **kwargs
     ):
         model_inputs = self.language_model.prepare_inputs_for_generation(
             input_ids, past_key_values=past_key_values,
-            attention_mask=attention_mask, **kwargs
+            attention_mask=attention_mask, is_first_iteration=is_first_iteration,
+            **kwargs
         )
-        if past_key_values is None:           # step 0 only — image is in the prompt
+        # transformers >= 5 pre-initializes the KV cache before prefill, so
+        # `past_key_values is None` never holds inside generate(); the prefill
+        # signal is `is_first_iteration` (same gating as upstream Llava).
+        # `past_key_values is None` is kept for direct calls outside generate(),
+        # and cache-less generation re-runs the full prompt every step, so it
+        # needs the pixels every step.
+        if is_first_iteration or past_key_values is None or not kwargs.get("use_cache", True):
             model_inputs["pixel_values"] = pixel_values
             model_inputs["image_grid_thw"] = image_grid_thw
         else:

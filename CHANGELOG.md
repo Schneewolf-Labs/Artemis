@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.5] - 2026-06-10
+
+### Fixed
+- **`generate()` was image-blind under transformers >= 5.**
+  `prepare_inputs_for_generation` gated image injection on
+  `past_key_values is None`, but transformers 5.x pre-initializes the KV
+  cache *before* prefill, so `pixel_values` was silently dropped on every
+  step (forward only validates the placeholder/feature count when
+  `pixel_values is not None`). The gate now uses the `is_first_iteration`
+  prefill signal (same as upstream Llava), keeps the `None` check for
+  direct calls outside `generate()`, and forwards pixels on every step
+  when `use_cache=False`. Workaround on earlier versions:
+  `generate(..., use_cache=False)`. Training (`forward` with labels) was
+  never affected.
+
+### Added
+- CPU-only pytest regression test (`tests/test_generate_image_injection.py`)
+  that counts vision-tower invocations through a real `generate()` call —
+  tiny random configs, no checkpoint needed, runs in CI.
+- `tests.yml`: new `unit` CI job with a CPU ML stack (torch + transformers)
+  that actually runs the pytest suite; the no-stack collection job is
+  unchanged.
+
+## [0.1.4] - 2026-06-06
+
+### Added
+- Collator: per-row `enable_thinking`, auto-detected from whether the final
+  assistant turn carries a `<think>...</think>` block (`auto_detect_thinking`,
+  default on). Non-reasoning rows bake the empty think wrapper into the
+  prompt prefix so the model never trains on emitting a stray `</think>`.
+
+## [0.1.3] - 2026-05-29
+
+### Fixed
+- Modeling: `gradient_checkpointing_enable()/disable()` now forward to the
+  `language_model` (the trainable decoder), so trainers that toggle
+  grad-checkpointing around eval work with ArtemisVLM.
+
 ## [0.1.2] - 2026-05-29
 
 ### Fixed
